@@ -158,3 +158,5 @@ Type anything into the AI text box and submit your prompt. Afterwards, the conso
 - npm run dev
 - docker compose down
 - docker compose up --build
+- performance.clearMarks();
+- performance.clearMeasures();
