@@ -1,0 +1,141 @@
+/*
+  DEFAULT GLOBAL STYLES
+*/
+/* :root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+} */
+
+
+/* Base variables (light) */
+:root {
+  --bg: #ffffff;
+  --text: #111827;
+  --card: #f8fafc;
+  --accent: #1f7ed0;
+}
+
+/* Dark theme variables */
+@media (prefers-color-scheme: dark){
+  .dark,
+  [data-theme="dark"] :root{
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --text: #e6eef6;
+    --muted: #9aa6b2;
+    --card: #313131;
+    --accent: #58a6ff;
+  }
+}
+/* Apply to page */
+html, body, #__next {
+  height: 100%;
+  background: var(--bg) !important;
+  color: var(--text) !important;
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  transition: background-color .2s ease, color .2s ease;
+}
+
+/* Ensure common layout elements from modules don't force a white background */
+.page, .main, .container {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* base (light) */
+:root {
+  --bg: #ffffff;
+  --text: #111827;
+  --card: #f8fafc;
+  --accent: #1f7ed0;
+}
+
+/* dark variables */
+.dark,
+html[data-theme="dark"],
+[data-theme="dark"] {
+  --bg: #0b1220;
+  --text: #e6eef6;
+  --card: #071127;
+  --accent: #58a6ff;
+}
+
+/* Strong/global application so other page components can't force a white background */
+html, body, #__next, html.dark, body.dark, #__next.dark {
+  height: 100%;
+  background: var(--bg) !important;
+  color: var(--text) !important;
+  margin: 0;
+  transition: background-color .2s ease, color .2s ease;
+}
+
+/* catch common wrappers used by components/pages */
+html.dark body, html.dark #__next, .dark, .dark * {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+/* basic elements */
+main {
+  background: transparent !important;
+}
+textarea, input, button {
+  font: inherit;
+  color: var(--text);
+}
+button {
+  background: var(--card);
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+button[aria-pressed="true"] {
+  background: var(--accent);
+  color: white;
+  border-color: transparent;
+}
+section {
+  background: var(--card);
+  border-radius: 8px;
+  padding: 12px;
+}
