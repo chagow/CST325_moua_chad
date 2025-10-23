@@ -93,7 +93,7 @@ The pages include:
 Change directory to 'fastapi'
 
 ```bash
-cd fastapi
+cd .\fastapi
 ```
 
 First use,
