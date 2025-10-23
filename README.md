@@ -141,9 +141,10 @@ Go to the console tab in the devtools, and write down these statements:
 
 ```bash
 performance.clearMarks();
+```
+```bash
 performance.clearMeasures();
 ```
-
 This allows the perf.js to record and measure the next action you will take.
 
 Type anything into the AI text box and submit your prompt. Afterwards, the console should have the perf.js return its stats back to you.
