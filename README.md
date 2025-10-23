@@ -147,3 +147,14 @@ performance.clearMeasures();
 This allows the perf.js to record and measure the next action you will take.
 
 Type anything into the AI text box and submit your prompt. Afterwards, the console should have the perf.js return its stats back to you.
+
+## Useful Commands:
+
+- python -m venv. .venv
+- .venv\Scripts\activate
+- pip install -r requirements.txt
+- cd .\"repository_name_here"
+- uvicorn main:app --reload
+- npm run dev
+- docker compose down
+- docker compose up --build
