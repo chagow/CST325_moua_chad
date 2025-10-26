@@ -77,48 +77,6 @@ async def health_check():
     return {"status": "ok", "message": "API is healthy"}
 
 
-
-# @app.get("/api/products", response_model=List[Product])
-# async def list_products(db: Session = Depends(get_db)):
-#     products = db.query(ProductDB).all()
-#     return [Product(id=p.id, name=p.name, price=p.price) for p in products]
-
-# @app.get("/api/products/{product_id}", response_model=Product)
-# async def get_product(product_id: int, db: Session = Depends(get_db)):
-#     product = db.query(ProductDB).filter(ProductDB.id == product_id).first()
-#     if not product:
-#         raise HTTPException(status_code=404, detail="Product not found")
-#     return Product(id=product.id, name=product.name, price=product.price)
-
-# @app.post("/api/products", response_model=Product)
-# async def create_product(product: Product, db: Session = Depends(get_db)):
-#     db_product = ProductDB(id=product.id, name=product.name, price=product.price)
-#     db.add(db_product)
-#     db.commit()
-#     db.refresh(db_product)
-#     return Product(id=db_product.id, name=db_product.name, price=float(db_product.price))
-
-# @app.put("/api/products/{product_id}", response_model=Product)
-# async def update_product(product_id: int, updated_product: Product, db: Session = Depends(get_db)):
-#     product = db.query(ProductDB).filter(ProductDB.id == product_id).first()
-#     if not product:
-#         raise HTTPException(status_code=404, detail="Product not found")
-#     product.name = updated_product.name
-#     product.price = updated_product.price
-#     db.commit()
-#     db.refresh(product)
-#     return Product(id=product.id, name=product.name, price=product.price)
-
-# @app.delete("/api/products/{product_id}")
-# async def delete_product(product_id: int, db: Session = Depends(get_db)):
-#     product = db.query(ProductDB).filter(ProductDB.id == product_id).first()
-#     if not product:
-#         raise HTTPException(status_code=404, detail="Product not found")
-#     db.delete(product)
-#     db.commit()
-#     return {"message": "Product deleted"}
-
-
 @app.get("/api/products", response_model=List[Product])
 def read_products(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
     products = db.query(ProductDB).all()

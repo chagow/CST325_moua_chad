@@ -4,7 +4,7 @@ import Loading from "./loading";
 
 const API_URL = 'http://localhost:8000/api/products';
 
-function LoadingSkeleton({ count = 6 }) {
+function LoadingSkeleton({ count }) {
   const items = new Array(count).fill(0);
   return (
     <div aria-busy="true" aria-label="loading products">
@@ -167,7 +167,7 @@ export default function ProductsPage() {
           border: "1px solid #ccc",
         }}
       />
-      {loading && <LoadingSkeleton />}
+      {loading && <LoadingSkeleton count={2} />}
       {error && <p style={{ color: "red" }}>Error: {error}</p>}
 
       {/* Use an empty UL that we'll populate via DocumentFragment */}

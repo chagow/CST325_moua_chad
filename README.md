@@ -1,6 +1,7 @@
 # Local Full-Stack Starter
 Using FastAPI as a backend and Next.js as a frontend
 
+
 ## Installation of required packages
 1. In terminal, either on your computer or IDE, you can create and set up a virtual environment using:
 
@@ -40,6 +41,7 @@ Next.js will provide you some questions about its install, select:
  Would you like to use Turbopack? (recommended) ... Yes
  Would you like to customize the import alias (@/* by default)? ... No
 
+
 ## How to run the servers
 
 1. To run FastAPI, change directory to where your main.py resides:
@@ -68,6 +70,7 @@ npm run dev
 
 This will create the server and URL link in the terminal
 
+
 ## Accessing /docs
 
 Once you have opened the servers for FastAPI, you can access the docs by going to the link:
@@ -75,6 +78,7 @@ Once you have opened the servers for FastAPI, you can access the docs by going t
 http://127.0.0.1:8000/docs
 
 From there, you can access the CRUD functions and use them however you like.
+
 
 ## Accessing NextJS pages
 
@@ -87,6 +91,7 @@ The pages include:
     2. /products
 
     3. /signup
+
 
 ## Starting up Docker
 
@@ -109,6 +114,22 @@ Then,
 docker compose up --build
 ```
 Which creates the containers.
+
+Issues may include:
+
+- Docker or init SQL did not run
+
+   Can be solved by rerunning the steps above.
+
+- Modulenotfounderror configformain.py not found
+
+   After building you retainers, change the import of configformain.py in the main.py to either:
+
+   * from configformain import Settings
+
+   or
+
+   * from .configformain import Settings
 
 
 ## Next.js app (AI page)
