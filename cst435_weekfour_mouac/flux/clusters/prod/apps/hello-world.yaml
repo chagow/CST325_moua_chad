@@ -1,0 +1,40 @@
+# Flux Kustomization: instructs Flux to apply k8s/overlays/prod on a
+# schedule and whenever the source GitRepository sees a new commit.
+#
+# This is the pull-based GitOps pattern:
+#   1. CI pushes a new image tag to k8s/overlays/prod/kustomization.yaml
+#   2. Flux detects the commit within `interval` seconds
+#   3. Flux runs `kustomize build` and applies the diff to the cluster
+#   4. Flux posts health-check results back to the GitRepository status
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: hello-world
+  namespace: flux-system
+spec:
+  interval: 5m0s
+
+  # Path inside the GitRepository to the Kustomize overlay.
+  path: ./k8s/overlays/prod
+
+  # prune: true means resources deleted from Git are also deleted from
+  # the cluster — the repo is always the single source of truth.
+  prune: true
+
+  sourceRef:
+    kind: GitRepository
+    name: cst435-weekfour
+
+  # Flux waits for these resources to become Ready before marking the
+  # Kustomization as healthy. A failed health check triggers a retry
+  # and surfaces an alert, rather than silently leaving a bad deploy.
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: hello-world
+      namespace: hello-world-prod
+
+  # Retry failed reconciliations with exponential back-off.
+  retryInterval: 2m0s
+  timeout: 5m0s

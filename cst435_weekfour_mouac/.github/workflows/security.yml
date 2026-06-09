@@ -1,0 +1,138 @@
+name: Security Scans
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  # Weekly full scan at 04:00 UTC on Monday catches newly-published CVEs
+  # even when no code has changed since the last commit.
+  schedule:
+    - cron: '0 4 * * 1'
+
+# All jobs need security-events:write to upload SARIF results.
+# Contents:read is the safe default for everything else.
+permissions:
+  contents:        read
+  security-events: write
+
+jobs:
+
+  # ── 1. Secret detection ───────────────────────────────────────────────────
+  # Catches API keys, tokens, and credentials accidentally committed to source.
+  secret-scan:
+    name: Secret detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so every commit in a PR is checked, not just HEAD.
+          fetch-depth: 0
+
+      - name: Scan for secrets
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type:  fs
+          scan-ref:   .
+          scanners:   secret
+          format:     sarif
+          output:     trivy-secrets.sarif
+          # exit-code 1: a committed secret is always a blocker, not a warning.
+          exit-code:  '1'
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-secrets.sarif
+          category:   trivy-secrets
+
+  # ── 2. Filesystem + Dockerfile misconfiguration scan ─────────────────────
+  # Covers:
+  #   vuln      — CVEs in language package manifests (package.json, requirements.txt)
+  #   misconfig — Dockerfile best-practice violations (USER, COPY, ADD, etc.)
+  fs-scan:
+    name: Filesystem & config scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan repository
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type:      fs
+          scan-ref:       .
+          scanners:       vuln,misconfig
+          format:         sarif
+          output:         trivy-fs.sarif
+          severity:       HIGH,CRITICAL
+          exit-code:      '1'
+          ignore-unfixed: true
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-fs.sarif
+          category:   trivy-fs
+
+  # ── 3. npm dependency audit ───────────────────────────────────────────────
+  # npm audit queries the npm advisory database using package-lock.json.
+  # It catches vulnerabilities in transitive dependencies that Trivy might
+  # miss because it reads the lockfile rather than the resolved tree.
+  dependency-audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: node-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run npm audit
+        run: |
+          if [ ! -f package-lock.json ]; then
+            echo "::warning::package-lock.json not found." \
+              "Run 'npm install' locally and commit the lockfile to enable npm audit."
+            exit 0
+          fi
+          # --audit-level=high: only fail on high or critical severity advisories.
+          # Moderate and low are surfaced in the summary but do not block the build.
+          npm audit --audit-level=high
+
+      - name: Write audit summary
+        if: always()
+        run: |
+          echo "## npm audit" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          npm audit 2>&1 | tail -20 >> "$GITHUB_STEP_SUMMARY" || \
+            echo "package-lock.json required — skipped" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+  # ── 4. SBOM generation ────────────────────────────────────────────────────
+  # Produces a Software Bill of Materials in CycloneDX format.
+  # Useful for licence compliance audits and supply-chain transparency.
+  # This job is informational (exit-code 0) — it never blocks the pipeline.
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate SBOM
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type:  fs
+          scan-ref:   .
+          format:     cyclonedx
+          output:     sbom.cdx.json
+          exit-code:  '0'
+
+      # Attach the SBOM as a downloadable workflow artifact.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.sha }}
+          path: sbom.cdx.json
+          retention-days: 90

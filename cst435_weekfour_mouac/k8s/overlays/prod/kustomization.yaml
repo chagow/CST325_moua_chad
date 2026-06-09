@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: hello-world-prod
+
+resources:
+  - ../../base
+
+# Set by CI after a successful main-branch build:
+#   kustomize edit set image hello-world=ghcr.io/GITHUB_USERNAME/cst435_weekfour_mouac:sha-<commit>
+images:
+  - name: hello-world
+    newName: ghcr.io/GITHUB_USERNAME/cst435_weekfour_mouac
+    newTag: latest
+
+patches:
+  # Production runs 3 replicas by default; HPA can grow to 10
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+    target:
+      kind: Deployment
+      name: hello-world
+  # Prod needs at least 2 pods up during node drains
+  - patch: |-
+      - op: replace
+        path: /spec/minAvailable
+        value: 2
+    target:
+      kind: PodDisruptionBudget
+      name: hello-world
+
+commonLabels:
+  environment: prod

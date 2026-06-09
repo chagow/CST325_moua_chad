@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: hello-world
+  labels:
+    app.kubernetes.io/name: hello-world
+    app.kubernetes.io/component: web
+spec:
+  # At least one pod must stay up during node drains / cluster upgrades
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hello-world

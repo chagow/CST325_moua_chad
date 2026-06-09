@@ -1,0 +1,20 @@
+# Never copy these into the build context — they either bloat the image
+# or override the npm ci install that stages 2/3 perform inside Docker.
+node_modules
+.npm
+
+# Source control and CI config are irrelevant inside the container
+.git
+.github
+
+# Test files belong in the `test` stage, not the `runtime` stage.
+# Docker's COPY instruction uses this file, so the runtime stage's
+# `COPY src/ ./src/` never accidentally pulls in test code.
+test/
+
+# Misc noise
+*.md
+*.log
+.env*
+coverage/
+dist/

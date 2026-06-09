@@ -1,0 +1,144 @@
+name: Deploy to Kubernetes
+
+on:
+  # Primary trigger: fires when the CI pipeline completes on main.
+  # workflow_run is used here instead of a push trigger because GitHub
+  # does not fire push events for commits made by GITHUB_TOKEN — which
+  # is how the CI workflow pushes its kustomize image-tag update.
+  workflow_run:
+    workflows: ["Docker Build, Test, and Push"]
+    types: [completed]
+    branches: [main, master]
+
+  # Secondary trigger: fires when someone directly edits k8s manifests
+  # (e.g., a config-only change that doesn't touch application code).
+  push:
+    branches: [main, master]
+    paths:
+      - 'k8s/base/**'
+      - 'k8s/overlays/prod/**'
+
+  # Manual trigger: for emergency hotfixes or deliberate re-deploys.
+  workflow_dispatch:
+    inputs:
+      overlay:
+        description: 'Kustomize overlay to deploy'
+        required: true
+        default: prod
+        type: choice
+        options: [prod, dev]
+
+# Never run two deployments in parallel against the same cluster.
+# Setting cancel-in-progress to false means a newer run waits rather
+# than cancelling the in-flight one — safer for Kubernetes rollouts.
+concurrency:
+  group: deploy-kubernetes
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy → production
+    runs-on: ubuntu-latest
+
+    # Skip if triggered by workflow_run and the upstream build failed.
+    if: |
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    # GitHub Environment enables:
+    #   - Required reviewer approvals before the job runs
+    #   - Deployment history visible in the repo UI
+    #   - Environment-scoped secrets (KUBECONFIG lives here, not repo-wide)
+    environment:
+      name: production
+      url: https://hello-world.example.com   # replace with your ingress URL
+
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install kustomize
+        run: |
+          curl -sL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.1/kustomize_v5.4.1_linux_amd64.tar.gz" \
+            | tar -xz -C /usr/local/bin
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.30.0
+
+      # KUBECONFIG is stored as a base64-encoded environment secret.
+      # Generate it with: kubectl config view --raw | base64 -w0
+      - name: Configure cluster credentials
+        env:
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      # Show a diff before applying so the job summary tells reviewers
+      # exactly what will change. `|| true` prevents diff's exit code 1
+      # (which means "differences exist") from failing the step.
+      - name: Preview manifest diff
+        run: |
+          OVERLAY=${{ inputs.overlay || 'prod' }}
+          echo "## Manifest diff — \`k8s/overlays/${OVERLAY}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo '```diff' >> "$GITHUB_STEP_SUMMARY"
+          kustomize build "k8s/overlays/${OVERLAY}" \
+            | kubectl diff -f - 2>&1 \
+            >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Apply manifests
+        run: |
+          OVERLAY=${{ inputs.overlay || 'prod' }}
+          kustomize build "k8s/overlays/${OVERLAY}" | kubectl apply -f -
+
+      # Block until the rollout is fully healthy or 5 minutes elapse.
+      # On timeout the step fails, which triggers the rollback below.
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/hello-world \
+            --namespace hello-world-prod \
+            --timeout 5m
+
+      # Port-forward to the ClusterIP service and hit the health endpoints.
+      # This confirms the actual running pods respond — not just that the
+      # Deployment object exists.
+      - name: Smoke test live service
+        run: |
+          kubectl port-forward svc/hello-world 8080:80 \
+            --namespace hello-world-prod &
+          PF_PID=$!
+          trap "kill $PF_PID 2>/dev/null || true" EXIT
+          sleep 3
+          curl --fail --retry 5 --retry-delay 2 http://localhost:8080/healthz
+          curl --fail http://localhost:8080/readyz
+
+      - name: Write deployment summary
+        run: |
+          IMAGE=$(kustomize build k8s/overlays/prod | grep 'image:' | awk '{print $2}' | head -1)
+          echo "## Deployed successfully" >> "$GITHUB_STEP_SUMMARY"
+          echo "| | |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image | \`${IMAGE}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit | \`${{ github.sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Triggered by | \`${{ github.event_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
+
+      # If any previous step failed, roll back to the last stable ReplicaSet.
+      # kubectl rollout undo does not change the manifests in Git — the next
+      # successful deploy will re-apply the intended state.
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "::error::Deployment failed — rolling back to previous revision"
+          kubectl rollout undo deployment/hello-world \
+            --namespace hello-world-prod
+          kubectl rollout status deployment/hello-world \
+            --namespace hello-world-prod \
+            --timeout 3m

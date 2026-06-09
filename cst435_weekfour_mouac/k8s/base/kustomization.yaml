@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: hello-world
+
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - deployment.yaml
+  - service.yaml
+  - hpa.yaml
+  - poddisruptionbudget.yaml
+
+# Pin the image name; overlays set the tag via `kustomize edit set image`
+images:
+  - name: hello-world
+    newName: ghcr.io/GITHUB_USERNAME/cst435_weekfour_mouac
+    newTag: latest
+
+commonLabels:
+  app.kubernetes.io/managed-by: kustomize
+  app.kubernetes.io/part-of: cst435-weekfour
