@@ -45,8 +45,7 @@ jobs:
           cache-dependency-path: node-app/package-lock.json
 
       - name: Install dependencies
-        # Switch to `npm ci` once package-lock.json is committed.
-        run: npm install
+        run: npm ci
 
       - name: ESLint
         run: npm run lint
@@ -67,7 +66,7 @@ jobs:
           cache: npm
           cache-dependency-path: node-app/package-lock.json
 
-      - run: npm install
+      - run: npm ci
       - run: npm test
 
   # ── 3. Container build + integration smoke test ───────────────────────────
